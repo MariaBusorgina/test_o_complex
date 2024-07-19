@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Погода</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Прогноз погоды</h1>
+
+    <form method="post" action="{% url 'index' %}">
+        {% csrf_token %}
+        <label for="city">Введите название города:</label>
+        <input type="text" id="city" name="city" required list="city_list">
+        <datalist id="city_list"></datalist>
+        <button type="submit">Получить прогноз</button>
+    </form>
+    {% load weather_app_tags %}
+    {% if weather_data %}
+        <h2>{{ city }} погода </h2>
+        <p>{{ formatted_time }}</p>
+
+        <p>Температура: {{ weather_data.current_weather.temperature }} °C</p>
+        <p>Ветер: {{ weather_data.current_weather.windspeed }} м/с</p>
+        <p>{{ weather_data.current_weather.weathercode|get_weather_description }}</p>
+
+        <h3>Прогноз на неделю</h3>
+        {% load weather_app_tags %}
+        <ul>
+        {% for i in weather_data.daily.time %}
+            <li>
+                <p><strong>{{ i }}</strong></p>
+                <p>Максимальная температура: {{ weather_data.daily.temperature_2m_max|get_item_for_loop:forloop.counter0 }} °C</p>
+                <p>Минимальная температура: {{ weather_data.daily.temperature_2m_min|get_item_for_loop:forloop.counter0 }} °C</p>
+                <p>{{ weather_data.daily.weather_code|get_item_for_loop:forloop.counter0|get_weather_description }}</p>
+                <p>Вероятность выпадения осадков: {{ weather_data.daily.precipitation_probability_max|get_item_for_loop:forloop.counter0 }}%</p>
+            </li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if error_message %}
+        <p>{{ error_message }}</p>
+    {% endif %}
+
+    {% if city_searches %}
+        <h2>Посмотреть погоду в этих городах?</h2>
+        <ul>
+        {% for city_name in city_searches %}
+            <li><a href="{% url 'weather_detail' city_name %}">{{ city_name }}</a></li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+
+     <script>
+        $(document).ready(function() {
+            $("#city").on("input", function() {
+                var term = $(this).val();
+                if (term.length >= 2) { // Начинаем искать после ввода 2 символов
+                    $.ajax({
+                        url: "{% url 'city_autocomplete' %}",
+                        data: {
+                            'term': term
+                        },
+                        success: function(data) {
+                            $("#city_list").empty();
+                            data.forEach(function(city) {
+                                $("#city_list").append(new Option(city, city));
+                            });
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+
+
+</body>
+</html>
+
